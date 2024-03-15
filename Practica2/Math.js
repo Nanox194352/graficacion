@@ -100,7 +100,7 @@ class Vector3 {
    */
   static exactEquals(u, v) {
     return u.x == v.x &&
-           u.y == v.y +
+           u.y == v.y &&
            u.z == v.z;
   }
 
@@ -111,7 +111,11 @@ class Vector3 {
   normalize() {
     let l = distance(this);
 
-    return new Vector3(this.x / l, this.y / l, this.z / l);
+    if (l != 0) 
+      return new Vector3(this.x / l, this.y / l, this.z / l);
+    else 
+      return new Vector3();
+    
   }
 
   /**
@@ -192,6 +196,28 @@ class Matrix3 {
     this.a21 = a21;
     this.a22 = a22;
   }
+  
+  /**
+   * Función que regresa la matriz como un arreglo de sus elementos.
+   * Con esto puedo crear un código más sencillo y funcional.
+   * @return {Array}
+   */
+  as_array() {
+    return [this.a00, this.a01, this.a02, this.a10, this.a11, this.a12, this.a20, this.a21, this.a22];
+  }
+
+  /**
+   * Construye una matriz a partir del arreglo.
+   * @param {Array} array 
+   * @return {Matrix3}
+   */
+  static from_array(array) {
+    return new Matrix3(
+      array[0], array[1], array[2],
+      array[3], array[4], array[5],
+      array[6], array[7], array[8]
+    )
+  }
 
   /**
    * Función que devuelve la suma de dos matrices.
@@ -200,16 +226,9 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static add(m1, m2) {
-    return new Matrix3(
-      m1.a00 + m2.a00,
-      m1.a01 + m2.a01,
-      m1.a02 + m2.a02,
-      m1.a10 + m2.a10,
-      m1.a11 + m2.a11,
-      m1.a12 + m2.a12,
-      m1.a20 + m2.a20,
-      m1.a21 + m2.a21,
-      m1.a22 + m2.a22
+    let arr = m2.as_array();
+    return this.from_array(
+      m1.as_array().map((e, i) => e + arr[i])
     );
   }
 
@@ -218,7 +237,13 @@ class Matrix3 {
    * @return {Matrix3}
    */
   adjoint() {
+    let cof = new Matrix3(
+      this.a11*this.a22 - this.a12*this.a21, -(this.a10*this.a22 - this.a20*this.a12), this.a10*this.a21 - this.a20*this.a11,
+      -(this.a01*this.a22 - this.a21*this.a02), this.a00*this.a22 - this.a20*this.a02, -(this.a00*this.a21 - this.a20*this.a01),
+      this.a01*this.a12 - this.a11*this.a02, -(this.a00*this.a12 - this.a10*this.a02), this.a00*this.a11 - this.a10*this.a01
+    );
 
+    return cof.transpose();
   }
 
   /**
@@ -226,7 +251,7 @@ class Matrix3 {
    * @return {Matrix3}
    */
   clone() {
-
+    return from_array(this.as_array);
   }
 
   /**
@@ -234,7 +259,8 @@ class Matrix3 {
    * @return {Number}
    */
   determinant() {
-
+    return this.a00*this.a11*this.a22 + this.a01*this.a12*this.a20 + this.a02*this.a10*this.a21 - 
+           this.a02*this.a11*this.a20 - this.a01*this.a10*this.a22 - this.a00*this.a12*this.a21;
   }
 
   /**
@@ -244,7 +270,8 @@ class Matrix3 {
    * @return {Boolean}
    */
   static equals(m1, m2) {
-
+    let arr = m2.as_array();
+    return m1.as_array().map((e, i) => [e, arr[i]]).reduce((acc, par) => acc && Math.abs(par[0] - par[1]) <= epsilon);
   }
 
   /**
@@ -253,14 +280,23 @@ class Matrix3 {
    * @return {Boolean}
    */
   static exactEquals(m1, m2) {
-
+    let arr = m2.as_array();
+    return m1.as_array().map((e, i) => [e, arr[i]]).reduce((acc, par) => acc && (par[0] == par[1]));
   }
 
   /**
    * Función que asigna los valores de la matriz identidad a la matriz desde donde se invocó la función.
    */
   identity() {
-
+    this.a00 = 1;
+    this.a01 = 0;
+    this.a02 = 0;
+    this.a10 = 0;
+    this.a11 = 1;
+    this.a12 = 0;
+    this.a20 = 0;
+    this.a21 = 0;
+    this.a22 = 1;
   }
 
   /**
@@ -268,7 +304,13 @@ class Matrix3 {
    * @return {Matrix3}
    */
   invert() {
+    let det = this.determinant();
+    let adj = this.adjoint();
 
+    if (det == 0) 
+      return undefined;
+    else
+      return Matrix3.multiplyScalar(adj, 1/det);
   }
 
   /**
@@ -277,8 +319,12 @@ class Matrix3 {
    * @param {Matrix3} m2
    * @return {Matrix3}
    */
-  static multiply(m1, m2) {
-
+  static multiply(m1, m2) { 
+    return new Matrix3(
+      m1.a00*m2.a00 + m1.a01*m2.a10 + m1.a02*m2.a20, m1.a00*m2.a01 + m1.a01*m2.a11 + m1.a02*m2.a21, m1.a00*m2.a02 + m1.a01*m2.a12 + m1.a02*m2.a22,
+      m1.a10*m2.a00 + m1.a11*m2.a10 + m1.a12*m2.a20, m1.a10*m2.a01 + m1.a11*m2.a11 + m1.a12*m2.a21, m1.a10*m2.a02 + m1.a11*m2.a12 + m1.a12*m2.a22,
+      m1.a20*m2.a00 + m1.a21*m2.a10 + m1.a22*m2.a20, m1.a20*m2.a01 + m1.a21*m2.a11 + m1.a22*m2.a21, m1.a20*m2.a02 + m1.a21*m2.a12 + m1.a22*m2.a22
+    ); 
   }
 
   /**
@@ -288,7 +334,9 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static multiplyScalar(m1, c) {
-
+    return this.from_array(
+      m1.as_array().map((e,i) => c * e)
+    );
   }
 
   /**
@@ -297,7 +345,11 @@ class Matrix3 {
    * @return {Vector3}
    */
   multiplyVector(v) {
-
+    return new Vector3(
+      this.a00*v.x + this.a01*v.y + this.a02*v.z,
+      this.a10*v.x + this.a11*v.y + this.a12*v.z,
+      this.a20*v.x + this.a21*v.y + this.a22*v.z
+    );
   }
 
   /**
@@ -306,7 +358,14 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static rotate(theta) {
+    let cos = Math.cos(theta);
+    let sin = Math.sin(theta);
 
+    return new Matrix3(
+      cos, -sin, 0,
+      sin, cos, 0,
+      0, 0, 1
+    );
   }
 
   /**
@@ -316,7 +375,11 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static scale(sx, sy) {
-
+    return new Matrix3(
+      sx, 0, 0,
+      0, sy, 0,
+      0, 0, 1
+    );
   }
 
   /**
@@ -332,7 +395,15 @@ class Matrix3 {
    * @param {Number} a22
    */
   set(a00, a01, a02, a10, a11, a12, a20, a21, a22) {
-
+    this.a00 = a00;
+    this.a01 = a01;
+    this.a02 = a02;
+    this.a10 = a10;
+    this.a11 = a11;
+    this.a12 = a12;
+    this.a20 = a20;
+    this.a21 = a21;
+    this.a22 = a22;
   }
 
   /**
@@ -342,7 +413,9 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static subtract(m1, m2) {
-
+    return from_array(
+      m1.as_array().map((e, i) => e - m2[i])
+    );
   }
 
   /**
@@ -352,7 +425,11 @@ class Matrix3 {
    * @return {Matrix3}
    */
   static translate(tx, ty) {
-
+    return new Matrix3(
+      1, 0, tx,
+      0, 1, ty,
+      0, 0, 1
+    )
   }
 
   /**
@@ -360,6 +437,10 @@ class Matrix3 {
    * @return {Matrix3}
    */
   transpose() {
-
+    return new Matrix3(
+      this.a00, this.a10, this.a20,
+      this.a01, this.a11, this.a21,
+      this.a02, this.a12, this.a22,
+    );
   }
 }
